@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import StaffSidebar from "./staffsidebar";
@@ -8,13 +8,21 @@ import { onAuthStateChanged } from "firebase/auth";
 import axios from 'axios';
 
 function StaffHome() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [classes, setClasses] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [staffEmails, setStaffEmails] = useState([]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editModal, setEditModal] = useState(false);
+  const [editClass, setEditClass] = useState(null);
+  const [className, setClassName] = useState("");
+  const [section, setSection] = useState("");
+  const [subject, setSubject] = useState("");
+  const [teacher, setTeacher] = useState("");
+  const [modalError, setModalError] = useState("");
+  const editModalRef = useRef();
   const navigate = useNavigate();
 
   const toggleSidebar = () => {
@@ -49,7 +57,7 @@ function StaffHome() {
 
   const fetchStaffEmails = async () => {
     try {
-      const response = await axios.get('https://lms-iap4.onrender.com/api/staff');
+      const response = await axios.get('https://uelms.onrender.com/api/staff');
       setStaffEmails(response.data.map(staff => staff.email.toLowerCase()));
     } catch (error) {
       console.error('Error fetching staff emails:', error);
@@ -61,9 +69,12 @@ function StaffHome() {
   const fetchClasses = async (userId) => {
     try {
       if (!userId) throw new Error('User not authenticated');
-      const response = await axios.get(`https://lms-iap4.onrender.com/api/classes?staffId=${userId}`);
+      const response = await axios.get(`https://uelms.onrender.com/api/classes?staffId=${userId}`);
       const staffClasses = response.data.classes.filter(cls => cls.staffId === userId);
-      setClasses(staffClasses);
+      setClasses(staffClasses.map(cls => ({
+        ...cls,
+        color: cls.color || 'blue' // Ensure color is always set
+      })));
     } catch (error) {
       console.error('Error fetching classes:', error);
       setError(error.response?.data?.error || error.message);
@@ -74,13 +85,13 @@ function StaffHome() {
   const fetchAnnouncements = async (userId) => {
     try {
       if (!userId) throw new Error('User not authenticated');
-      const classResponse = await axios.get(`https://lms-iap4.onrender.com/api/classes?staffId=${userId}`);
+      const classResponse = await axios.get(`https://uelms.onrender.com/api/classes?staffId=${userId}`);
       const classIds = classResponse.data.classes.map(cls => cls._id).join(',');
 
       const currentUser = auth.currentUser;
       const userDisplayName = currentUser?.displayName || currentUser?.email?.split('@')[0];
 
-      const response = await axios.get(`https://lms-iap4.onrender.com/api/announcements`, {
+      const response = await axios.get(`https://uelms.onrender.com/api/announcements`, {
         params: {
           classIds: classIds || '',
           role: 'staff',
@@ -108,7 +119,7 @@ function StaffHome() {
     }
 
     try {
-      await axios.delete(`https://lms-iap4.onrender.com/api/announcements/${announcementId}`);
+      await axios.delete(`https://uelms.onrender.com/api/announcements/${announcementId}`);
       setAnnouncements(prev => prev.filter(a => a._id !== announcementId));
     } catch (error) {
       console.error('Error deleting announcement:', error);
@@ -133,7 +144,7 @@ function StaffHome() {
     e.stopPropagation();
     
     try {
-      await axios.get(`https://lms-iap4.onrender.com/api/classes/${classId}/verify`);
+      await axios.get(`https://uelms.onrender.com/api/classes/${classId}/verify`);
       if (navigator.share) {
         await navigator.share({
           title: 'Join my class',
@@ -159,13 +170,64 @@ function StaffHome() {
     }
 
     try {
-      await axios.delete(`https://lms-iap4.onrender.com/api/classes/${classId}`);
+      await axios.delete(`https://uelms.onrender.com/api/classes/${classId}`);
       setClasses(prev => prev.filter(c => c._id !== classId));
       await fetchAnnouncements(user.uid);
     } catch (error) {
       console.error('Error deleting class:', error);
       setError(error.response?.data?.error || error.message);
     }
+  };
+
+  const handleEditClass = async () => {
+    if (!className.trim() || !teacher.trim()) {
+      setModalError("Class name and teacher name are required");
+      return;
+    }
+
+    try {
+      const response = await axios.put(`https://uelms.onrender.com/api/classes/${editClass._id}`, {
+        name: className,
+        section,
+        subject,
+        teacher,
+        staffId: user.uid,
+        email: user.email,
+        color: editClass.color,
+        initials: className.substring(0, 2).toUpperCase()
+      });
+
+      setClasses(prev => prev.map(cls => cls._id === editClass._id ? response.data.class : cls));
+      setEditModal(false);
+      setClassName("");
+      setSection("");
+      setSubject("");
+      setTeacher("");
+      setModalError("");
+    } catch (error) {
+      console.error('Error updating class:', error);
+      setModalError(error.response?.data?.error || error.message);
+    }
+  };
+
+  const openEditModal = (cls) => {
+    setEditClass(cls);
+    setClassName(cls.name);
+    setSection(cls.section || "");
+    setSubject(cls.subject || "");
+    setTeacher(cls.teacher || "");
+    setModalError("");
+    setEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModal(false);
+    setClassName("");
+    setSection("");
+    setSubject("");
+    setTeacher("");
+    setModalError("");
+    setEditClass(null);
   };
 
   const handleClassClick = (cls) => {
@@ -234,12 +296,23 @@ function StaffHome() {
       Promise.all([
         fetchClasses(user.uid),
         fetchAnnouncements(user.uid)
-      ]).catch(err => {
+      ].catch(err => {
         console.error("Error refreshing data:", err);
         setError(err.message);
-      });
+      }));
     }
   };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (editModal && editModalRef.current && e.target === editModalRef.current) {
+        closeEditModal();
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [editModal]);
 
   if (loading) {
     return (
@@ -286,7 +359,7 @@ function StaffHome() {
                     className="card-clickable" 
                     onClick={() => handleClassClick(cls)}
                   >
-                    <div className={`card-header ${cls.color || 'blue'}`}>
+                    <div className={`card-header ${cls.color}`}>
                       <div className="card-title">{cls.name} {cls.section && `- ${cls.section}`}</div>
                       <div className="card-teacher">Staff: {cls.teacher || 'Not specified'}</div>
                     </div>
@@ -326,11 +399,14 @@ function StaffHome() {
                         <span className="material-symbols-outlined">folder</span>
                       </Link>
                       <button 
-                        className="action-icon share-btn"
-                        onClick={(e) => handleShareClass(cls._id, e)}
-                        title="Share Class"
+                        className="action-icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(cls);
+                        }}
+                        title="Edit Class"
                       >
-                        <span className="material-symbols-outlined">share</span>
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button 
                         className="action-icon delete-btn"
@@ -411,6 +487,71 @@ function StaffHome() {
               </div>
             )}
           </div>
+
+          {editModal && (
+            <div className="modal show" ref={editModalRef}>
+              <div className="modal-content">
+                <span className="close" onClick={closeEditModal} aria-label="Close Modal">
+                  ×
+                </span>
+                <div className="modal-header">
+                  <h2>Edit Class</h2>
+                </div>
+                <div className="modal-body">
+                  {modalError && <div className="error-message">{modalError}</div>}
+                  <div className="form-group">
+                    <label>Class name (required)</label>
+                    <input
+                      type="text"
+                      value={className}
+                      onChange={(e) => setClassName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Section</label>
+                    <input
+                      type="text"
+                      value={section}
+                      onChange={(e) => setSection(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Teacher Name (required)</label>
+                    <input
+                      type="text"
+                      value={teacher}
+                      onChange={(e) => setTeacher(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Subject</label>
+                    <input
+                      type="text"
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    className="btn btn-cancel"
+                    onClick={closeEditModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-create"
+                    onClick={handleEditClass}
+                    disabled={!className.trim() || !teacher.trim()}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -10,12 +10,12 @@ import Sidebar from './Sidebar';
 import axios from 'axios';
 import { auth } from './firebase';
 
-const BASE_URL = 'https://lms-iap4.onrender.com';
+const BASE_URL = 'https://uelms.onrender.com';
 
 const StudentChat = () => {
   const { classId } = useParams();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [classData, setClassData] = useState({
     name: 'Loading...',
     section: '',
@@ -335,9 +335,13 @@ const StudentChat = () => {
           <FontAwesomeIcon icon={faStream} />
           <span>Stream</span>
         </Link>
+        <Link to={`/assignments/${classId}`} className="nav-item">
+                  <FontAwesomeIcon icon={faClipboardList} />
+                  <span>Assignments</span>
+                </Link>
         <Link to={`/assessment/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faClipboardList} />
-          <span>Notes</span>
+          <span>Learning AID</span>
         </Link>
         <Link to={`/people/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faUsers} />
@@ -345,7 +349,7 @@ const StudentChat = () => {
         </Link>
         <Link to={`/chat/${classId}`} className="nav-item active">
           <FontAwesomeIcon icon={faComments} />
-          <span>Chat</span>
+          <span>Discussion Forum</span>
         </Link>
       </div>
     </div>

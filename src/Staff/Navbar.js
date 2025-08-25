@@ -1,16 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import "../Navbar.css";
 import { auth } from "../firebase";
-import { signOut, signInWithEmailAndPassword, updatePassword } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { FaLock, FaUser } from 'react-icons/fa';
 
 const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [createModal, setCreateModal] = useState(false);
   const [announcementModal, setAnnouncementModal] = useState(false);
-  const [resetPasswordModal, setResetPasswordModal] = useState(false);
   const [className, setClassName] = useState("");
   const [section, setSection] = useState("");
   const [subject, setSubject] = useState("");
@@ -20,19 +18,12 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
   const [announcementLink, setAnnouncementLink] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("");
   const [classes, setClasses] = useState([]);
-  const [email, setEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState(null);
   const dropdownRef = useRef();
   const profileDropdownRef = useRef();
   const createModalRef = useRef();
   const announcementModalRef = useRef();
-  const resetPasswordModalRef = useRef();
   const navigate = useNavigate();
 
   const colors = ["red", "orange", "green", "blue", "purple", "teal"];
@@ -51,7 +42,6 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
             ? `${user.email.substring(0, 15)}...@${user.email.split('@')[1]}`
             : user.email
         });
-        setTeacher(displayName);
       } else {
         setUserData(null);
         setTeacher("");
@@ -68,7 +58,7 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
         const user = auth.currentUser;
         if (!user) return;
 
-        const response = await fetch(`https://lms-iap4.onrender.com/api/classes?staffId=${user.uid}`, {
+        const response = await fetch(`https://uelms.onrender.com/api/classes?staffId=${user.uid}`, {
           headers: {
             'Content-Type': 'application/json'
           }
@@ -102,27 +92,13 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
   const openCreateModal = () => {
     setCreateModal(true);
     setError("");
-    setTeacher(userData?.displayName || userData?.email.split('@')[0] || "");
+    setTeacher("");
   };
 
   const openAnnouncementModal = () => {
     setAnnouncementModal(true);
     setError("");
     setSelectedClassId("");
-  };
-
-  const openResetPasswordModal = () => {
-    setResetPasswordModal(true);
-    setError("");
-    setSuccess("");
-    setEmail("");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmNewPassword("");
-  };
-
-  const openInstantMeet = () => {
-    alert("Instant Meet feature will be implemented soon!");
   };
 
   const handleLogout = async () => {
@@ -139,12 +115,11 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
   const closeModal = (setter) => {
     setter(false);
     setError("");
-    setSuccess("");
   };
 
   const handleCreateClass = async () => {
-    if (!className.trim()) {
-      setError("Class name is required");
+    if (!className.trim() || !teacher.trim()) {
+      setError("Class name and teacher name are required");
       return;
     }
 
@@ -152,7 +127,7 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
 
-      const response = await fetch('https://lms-iap4.onrender.com/api/classes', {
+      const response = await fetch('https://uelms.onrender.com/api/classes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -161,7 +136,7 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
           name: className,
           section,
           subject,
-          teacher: teacher || userData?.displayName || userData?.email.split('@')[0],
+          teacher,
           staffId: user.uid,
           email: userData?.email,
           color: colors[Math.floor(Math.random() * colors.length)],
@@ -182,7 +157,7 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
       setClassName("");
       setSection("");
       setSubject("");
-      setTeacher(userData?.displayName || userData?.email.split('@')[0] || "");
+      setTeacher("");
     } catch (error) {
       console.error('Error creating class:', error);
       setError(error.message || 'Error creating class');
@@ -199,7 +174,7 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
 
-      const response = await fetch('https://lms-iap4.onrender.com/api/announcements', {
+      const response = await fetch('https://uelms.onrender.com/api/announcements', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -221,7 +196,6 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
         throw new Error(data.error || 'Failed to create announcement');
       }
 
-      // Only call refreshAnnouncements if it's provided and is a function
       if (refreshAnnouncements && typeof refreshAnnouncements === 'function') {
         refreshAnnouncements();
       }
@@ -234,71 +208,6 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
     } catch (error) {
       console.error('Error creating announcement:', error);
       setError(error.message || 'Error creating announcement');
-    }
-  };
-
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    if (!email.endsWith('@gmail.com')) {
-      setError('Please use a valid Gmail address');
-      setLoading(false);
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters');
-      setLoading(false);
-      return;
-    }
-
-    if (newPassword !== confirmNewPassword) {
-      setError('New password and confirm password do not match');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, currentPassword);
-      const user = userCredential.user;
-
-      if (!user.emailVerified) {
-        await signOut(auth);
-        setError('Please verify your email address first.');
-        setLoading(false);
-        return;
-      }
-
-      await updatePassword(user, newPassword);
-      await signOut(auth);
-      setSuccess('Password reset successfully! Please sign in with your new password.');
-      setEmail('');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmNewPassword('');
-      setTimeout(() => {
-        setResetPasswordModal(false);
-        navigate('/login');
-      }, 2000);
-    } catch (err) {
-      if (err.code === 'auth/wrong-password') {
-        setError('Incorrect current password');
-      } else if (err.code === 'auth/user-not-found') {
-        setError('No account found with this email');
-      } else if (err.code === 'auth/weak-password') {
-        setError('Password is too weak (min 6 chars)');
-      } else if (err.code === 'auth/invalid-credential') {
-        setError('Invalid credentials provided');
-      } else if (err.code === 'auth/invalid-api-key') {
-        setError('Invalid API key. Please check your Firebase configuration.');
-      } else {
-        setError(`Error: ${err.message}`);
-      }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -316,14 +225,11 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
       if (announcementModal && announcementModalRef.current && e.target === announcementModalRef.current) {
         setAnnouncementModal(false);
       }
-      if (resetPasswordModal && resetPasswordModalRef.current && e.target === resetPasswordModalRef.current) {
-        setResetPasswordModal(false);
-      }
     };
 
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
-  }, [dropdownOpen, profileDropdownOpen, createModal, announcementModal, resetPasswordModal]);
+  }, [dropdownOpen, profileDropdownOpen, createModal, announcementModal]);
 
   return (
     <>
@@ -362,14 +268,6 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
                   <span className="material-symbols-outlined">add_comment</span>
                   Add announcement
                 </a>
-                <a href="#" onClick={(e) => { 
-                  e.preventDefault(); 
-                  setDropdownOpen(false);
-                  openInstantMeet();
-                }}>
-                  <span className="material-symbols-outlined">videocam</span>
-                  Instant Meet
-                </a>
               </div>
             </div>
             
@@ -394,14 +292,6 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
                       <span className="profile-email" title={userData.email}>{userData.email}</span>
                     </div>
                     <div className="dropdown-divider"></div>
-                    <a href="#" onClick={(e) => {
-                      e.preventDefault();
-                      setProfileDropdownOpen(false);
-                      openResetPasswordModal();
-                    }}>
-                      <span className="material-symbols-outlined">lock_reset</span>
-                      Reset Password
-                    </a>
                     <a href="#" onClick={(e) => {
                       e.preventDefault();
                       handleLogout();
@@ -447,8 +337,13 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
                 />
               </div>
               <div className="form-group">
-                <label>Teacher Name</label>
-                <p>{userData?.displayName || userData?.email.split('@')[0] || 'N/A'}</p>
+                <label>Teacher Name (required)</label>
+                <input
+                  type="text"
+                  value={teacher}
+                  onChange={(e) => setTeacher(e.target.value)}
+                  required
+                />
               </div>
               <div className="form-group">
                 <label>Subject</label>
@@ -469,7 +364,7 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
               <button
                 className="btn btn-create"
                 onClick={handleCreateClass}
-                disabled={!className.trim()}
+                disabled={!className.trim() || !teacher.trim()}
               >
                 Create
               </button>
@@ -549,91 +444,6 @@ const Navbar = ({ toggleSidebar, refreshClasses, refreshAnnouncements }) => {
                 disabled={!announcementTitle.trim() || !announcementContent.trim() || !selectedClassId}
               >
                 Add
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Password Modal */}
-      {resetPasswordModal && (
-        <div className="modal show" ref={resetPasswordModalRef}>
-          <div className="modal-content">
-            <span className="close" onClick={() => closeModal(setResetPasswordModal)} aria-label="Close Modal">
-              ×
-            </span>
-            <div className="modal-header">
-              <h2>Reset Password</h2>
-            </div>
-            <div className="modal-body">
-              {error && <div className="error-message">{error}</div>}
-              {success && <div className="success-message">{success}</div>}
-              <div className="form-group">
-                <label>Your Gmail Address (required)</label>
-                <div className="input-with-icon">
-                  <FaUser className="input-icon" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your Gmail address"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Current Password (required)</label>
-                <div className="input-with-icon">
-                  <FaLock className="input-icon" />
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>New Password (required, min 6 chars)</label>
-                <div className="input-with-icon">
-                  <FaLock className="input-icon" />
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Confirm New Password (required)</label>
-                <div className="input-with-icon">
-                  <FaLock className="input-icon" />
-                  <input
-                    type="password"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                className="btn btn-cancel"
-                onClick={() => closeModal(setResetPasswordModal)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn btn-create"
-                onClick={handleResetPassword}
-                disabled={loading || !email.trim() || !currentPassword.trim() || !newPassword.trim() || !confirmNewPassword.trim()}
-              >
-                {loading ? "Resetting..." : "Reset Password"}
               </button>
             </div>
           </div>

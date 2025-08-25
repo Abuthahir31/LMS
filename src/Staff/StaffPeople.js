@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Papa from "papaparse";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -11,6 +11,7 @@ import StaffSidebar from './staffsidebar';
 import axios from 'axios';
 import { auth } from '../firebase';
 import '../people.css';
+import * as XLSX from "xlsx";
 
 function generateAvatar(name, email, photoURL) {
   if (photoURL) {
@@ -33,7 +34,7 @@ function formatEmail(email) {
 }
 
 const PeoplePage = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [people, setPeople] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,8 +55,9 @@ const PeoplePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [studentEmail, setStudentEmail] = useState("");
-  const [bulkStudentCSV, setBulkStudentCSV] = useState(null);
+  const [bulkStudentFile, setBulkStudentFile] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -88,7 +90,7 @@ const PeoplePage = () => {
   const fetchClassDetails = async (classId, staffId) => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`https://lms-iap4.onrender.com/api/classes/${classId}/staff/${staffId}`);
+      const response = await axios.get(`https://uelms.onrender.com/api/classes/${classId}/staff/${staffId}`);
       setClassData(prev => ({
         ...prev,
         ...response.data.class,
@@ -102,154 +104,232 @@ const PeoplePage = () => {
       setIsLoading(false);
     }
   };
+
   function extractNameFromEmail(email) {
-  if (!email) return 'Unknown User';
-  const username = email.split('@')[0];
-  // Remove numbers and special characters, then split by dots/underscores
-  const cleanName = username.replace(/[0-9._-]+/g, ' ');
-  // Capitalize first letter of each word
-  return cleanName.split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-    .trim() || 'Unknown User';
-}
-  
+    if (!email) return 'Unknown User';
+    const username = email.split('@')[0];
+    const cleanName = username.replace(/[0-9._-]+/g, ' ');
+    return cleanName.split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+      .trim() || 'Unknown User';
+  }
+
   const fetchPeople = async (classId, staffId) => {
-  setIsLoading(true);
-  try {
-    const response = await axios.get(`https://lms-iap4.onrender.com/api/classes/${classId}/people/staff/${staffId}`);
-    
-    const updatedPeople = response.data.people.map(person => ({
-      ...person,
-      // Use the name from backend, or derive from email if not available
-      displayName: person.name || extractNameFromEmail(person.email),
-      photoURL: person.photoURL || null,
-      shortEmail: formatEmail(person.email)
-    }));
-    
-    setPeople(updatedPeople || []);
-    setClassData(prev => ({
-      ...prev,
-      name: response.data.className || prev.name
-    }));
-    setError(null);
-  } catch (err) {
-    setError(err.response?.data?.error || 'Failed to load class members. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-
-  const handleAddStudent = async () => {
-  if (!studentEmail || !studentEmail.endsWith('@gmail.com')) {
-    setError('Please enter a valid student Gmail address.');
-    return;
-  }
-  setIsLoading(true);
-  try {
-    const response = await axios.post(
-      `https://lms-iap4.onrender.com/api/classes/${classId}/people/staff/${staffId}`,
-      { studentEmail }
-    );
-    const newStudent = response.data.data;
-    setPeople(prev => [
-      ...prev,
-      {
-        id: newStudent.studentId,
-        email: studentEmail,
-        name: newStudent.name || extractNameFromEmail(studentEmail),
-        displayName: newStudent.name || extractNameFromEmail(studentEmail),
-        shortEmail: formatEmail(studentEmail),
-        role: 'student',
-        photoURL: null
-      }
-    ]);
-    setStudentEmail("");
-    setAddStudentOpen(false);
-    setError(null);
-    setSuccess("Student added successfully.");
-  } catch (err) {
-    setError(err.response?.data?.error || 'Failed to add student. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const handleBulkStudentCSVChange = (e) => {
-    setSuccess(null);
-    setError(null);
-    setBulkStudentCSV(e.target.files?.[0] ?? null);
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`https://uelms.onrender.com/api/classes/${classId}/people/staff/${staffId}`);
+      
+      const updatedPeople = response.data.people.map(person => ({
+        ...person,
+        displayName: person.role === 'staff' ? classData.teacher : person.name || extractNameFromEmail(person.email),
+        photoURL: person.photoURL || null,
+        shortEmail: formatEmail(person.email)
+      }));
+      
+      setPeople(updatedPeople || []);
+      setClassData(prev => ({
+        ...prev,
+        name: response.data.className || prev.name
+      }));
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to load class members. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  const handleAddStudent = async () => {
+    if (!studentEmail) {
+      setError('Please enter a valid student Gmail address.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await axios.post(
+        `https://uelms.onrender.com/api/classes/${classId}/people/staff/${staffId}`,
+        { studentEmail }
+      );
+      const newStudent = response.data.data;
+      setPeople(prev => [
+        ...prev,
+        {
+          id: newStudent.studentId,
+          email: studentEmail,
+          name: newStudent.name || extractNameFromEmail(studentEmail),
+          displayName: newStudent.name || extractNameFromEmail(studentEmail),
+          shortEmail: formatEmail(studentEmail),
+          role: 'student',
+          photoURL: null
+        }
+      ]);
+      setStudentEmail("");
+      setAddStudentOpen(false);
+      setError(null);
+      setSuccess("Student added successfully.");
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add student. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-// Update the bulk add students handler
-const handleBulkAddStudents = async () => {
-  setSuccess(null);
-  setError(null);
-  if (!bulkStudentCSV) {
-    setError("No student CSV file selected.");
-    return;
-  }
-  setBulkLoading(true);
+  const handleBulkStudentFileChange = (e) => {
+    setSuccess(null);
+    setError(null);
+    setBulkStudentFile(e.target.files?.[0] ?? null);
+  };
 
-  Papa.parse(bulkStudentCSV, {
-    header: true,
-    skipEmptyLines: true,
-    complete: async (results) => {
-      const emails = results.data
-        .map(row => typeof row.email === 'string' ? row.email.trim() : '')
-        .filter(email => email && email.endsWith('@gmail.com'));
+  const handleBulkAddStudents = async () => {
+    setSuccess(null);
+    setError(null);
+    if (!bulkStudentFile) {
+      setError("No file selected. Please upload a CSV or XLSX file.");
+      return;
+    }
+    setBulkLoading(true);
 
-      if (emails.length === 0) {
-        setError('No valid Gmail emails found in the CSV!');
-        setBulkLoading(false);
-        return;
-      }
+    const fileExtension = bulkStudentFile.name.split('.').pop().toLowerCase();
 
+    if (fileExtension === 'csv') {
+      Papa.parse(bulkStudentFile, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+          const emails = results.data
+            .map(row => typeof row.email === 'string' ? row.email.trim() : '')
+            .filter(email => email);
+
+          if (emails.length === 0) {
+            setError('No valid emails found in the CSV!');
+            setBulkLoading(false);
+            return;
+          }
+
+          try {
+            const response = await axios.post(
+              `https://uelms.onrender.com/api/classes/${classId}/people/bulk/staff/${staffId}`,
+              { studentEmails: emails }
+            );
+            
+            const { addedStudents, skippedEmails } = response.data;
+            
+            if (Array.isArray(addedStudents) && addedStudents.length > 0) {
+              setPeople(prev => [
+                ...prev,
+                ...addedStudents.map(student => ({
+                  id: student.studentId,
+                  email: student.email,
+                  name: student.name || extractNameFromEmail(student.email),
+                  displayName: student.name || extractNameFromEmail(student.email),
+                  shortEmail: formatEmail(student.email),
+                  role: 'student',
+                  photoURL: null
+                }))
+              ]);
+            }
+
+            let message = `${addedStudents.length} student${addedStudents.length === 1 ? '' : 's'} added successfully.`;
+            if (skippedEmails?.length > 0) {
+              message += ` ${skippedEmails.length} email${skippedEmails.length === 1 ? '' : 's'} skipped (already enrolled or invalid).`;
+            }
+            
+            setSuccess(message);
+            setBulkStudentFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+          } catch (err) {
+            setError(err.response?.data?.error || 'Failed to add students. Please try again.');
+          } finally {
+            setBulkLoading(false);
+          }
+        },
+        error: (error) => {
+          setError('Error parsing CSV file: ' + error.message);
+          setBulkLoading(false);
+        }
+      });
+    } else if (fileExtension === 'xlsx') {
       try {
-        const response = await axios.post(
-          `https://lms-iap4.onrender.com/api/classes/${classId}/people/bulk/staff/${staffId}`,
-          { studentEmails: emails }
-        );
-        
-        const { addedStudents, skippedEmails } = response.data;
-        
-        if (Array.isArray(addedStudents) && addedStudents.length > 0) {
-          setPeople(prev => [
-            ...prev,
-            ...addedStudents.map(student => ({
-              id: student.studentId,
-              email: student.email,
-              name: student.name || extractNameFromEmail(student.email),
-              displayName: student.name || extractNameFromEmail(student.email),
-              shortEmail: formatEmail(student.email),
-              role: 'student',
-              photoURL: null
-            }))
-          ]);
-        }
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-        let message = `${addedStudents.length} student${addedStudents.length === 1 ? '' : 's'} added successfully.`;
-        if (skippedEmails?.length > 0) {
-          message += ` ${skippedEmails.length} email${skippedEmails.length === 1 ? '' : 's'} skipped (already enrolled or invalid).`;
-        }
-        
-        setSuccess(message);
-        setBulkStudentCSV(null);
+          // Assuming the first row is headers and 'email' is a column header
+          const headerRow = jsonData[0];
+          const emailIndex = headerRow.findIndex(header => header && header.toString().toLowerCase() === 'email');
+          if (emailIndex === -1) {
+            setError('No "email" column found in the XLSX file.');
+            setBulkLoading(false);
+            return;
+          }
+
+          const emails = jsonData
+            .slice(1) // Skip header row
+            .map(row => typeof row[emailIndex] === 'string' ? row[emailIndex].trim() : '')
+            .filter(email => email);
+
+          if (emails.length === 0) {
+            setError('No valid emails found in the XLSX file!');
+            setBulkLoading(false);
+            return;
+          }
+
+          try {
+            const response = await axios.post(
+              `https://uelms.onrender.com/api/classes/${classId}/people/bulk/staff/${staffId}`,
+              { studentEmails: emails }
+            );
+
+            const { addedStudents, skippedEmails } = response.data;
+
+            if (Array.isArray(addedStudents) && addedStudents.length > 0) {
+              setPeople(prev => [
+                ...prev,
+                ...addedStudents.map(student => ({
+                  id: student.studentId,
+                  email: student.email,
+                  name: student.name || extractNameFromEmail(student.email),
+                  displayName: student.name || extractNameFromEmail(student.email),
+                  shortEmail: formatEmail(student.email),
+                  role: 'student',
+                  photoURL: null
+                }))
+              ]);
+            }
+
+            let message = `${addedStudents.length} student${addedStudents.length === 1 ? '' : 's'} added successfully.`;
+            if (skippedEmails?.length > 0) {
+              message += ` ${skippedEmails.length} email${skippedEmails.length === 1 ? '' : 's'} skipped (already enrolled or invalid).`;
+            }
+
+            setSuccess(message);
+            setBulkStudentFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+          } catch (err) {
+            setError(err.response?.data?.error || 'Failed to add students. Please try again.');
+          } finally {
+            setBulkLoading(false);
+          }
+        };
+        reader.onerror = () => {
+          setError('Error reading XLSX file.');
+          setBulkLoading(false);
+        };
+        reader.readAsArrayBuffer(bulkStudentFile);
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to add students. Please try again.');
-      } finally {
+        setError('Error processing XLSX file: ' + err.message);
         setBulkLoading(false);
       }
-    },
-    error: (error) => {
-      setError('Error parsing CSV file: ' + error.message);
+    } else {
+      setError('Unsupported file format. Please upload a CSV or XLSX file.');
       setBulkLoading(false);
     }
-  });
-};
-
+  };
 
   const filteredPeople = people.filter(person => {
     let matchesTab =
@@ -257,7 +337,7 @@ const handleBulkAddStudents = async () => {
       (activeTab === "staff" && person.role === "staff") ||
       (activeTab === "students" && person.role === "student");
     let matchesSearch =
-      (person.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (person.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (person.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesTab && matchesSearch;
   });
@@ -288,7 +368,7 @@ const handleBulkAddStudents = async () => {
     if (window.confirm(`Are you sure you want to remove this ${personType}?`)) {
       setIsLoading(true);
       try {
-        await axios.delete(`https://lms-iap4.onrender.com/api/classes/${classId}/people/${personId}/staff/${staffId}`);
+        await axios.delete(`https://uelms.onrender.com/api/classes/${classId}/people/${personId}/staff/${staffId}`);
         setPeople(people => people.filter(p => p.id !== personId));
         setError(null);
       } catch (err) {
@@ -303,8 +383,8 @@ const handleBulkAddStudents = async () => {
   function handleProfile(person) {
     setProfilePerson({
       ...person,
-      name: person.name || person.email.split('@')[0],
-      displayName: person.name || person.email.split('@')[0]
+      name: person.role === 'staff' ? classData.teacher : person.name || extractNameFromEmail(person.email),
+      displayName: person.role === 'staff' ? classData.teacher : person.name || extractNameFromEmail(person.email)
     });
     setProfileOpen(true);
     setPersonDropdownOpen(null);
@@ -375,7 +455,6 @@ const handleBulkAddStudents = async () => {
                 <>
                   <div className="people-header">
                     <div className="search-container">
-                      <FontAwesomeIcon icon={faSearch} className="search-icon" />
                       <input
                         type="text"
                         className="search-input"
@@ -391,21 +470,27 @@ const handleBulkAddStudents = async () => {
                       <FontAwesomeIcon icon={faUserPlus} />
                       Add Student
                     </button>
-                    <button className="primary-btn add-student-btn">
+                    <button
+                      className="primary-btn add-student-btn"
+                      type="button"
+                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                      disabled={bulkLoading}
+                    >
                       <FontAwesomeIcon icon={faUpload} />
-                      <span>Bulk Add Students CSV</span>
-                      <input
-                        type="file"
-                        accept=".csv"
-                        onChange={handleBulkStudentCSVChange}
-                        style={{ display: "none" }}
-                        disabled={bulkLoading}
-                      />
+                      <span>Bulk Add Students</span>
                     </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv,.xlsx"
+                      onChange={handleBulkStudentFileChange}
+                      style={{ display: "none" }}
+                      disabled={bulkLoading}
+                    />
                     <button
                       className="primary-btn"
                       onClick={handleBulkAddStudents}
-                      disabled={!bulkStudentCSV || bulkLoading}
+                      disabled={!bulkStudentFile || bulkLoading}
                     >
                       {bulkLoading ? "Uploading..." : "Upload"}
                     </button>
@@ -436,11 +521,11 @@ const handleBulkAddStudents = async () => {
                             if (a.role === "staff" && b.role !== "staff") return -1;
                             if (b.role === "staff" && a.role !== "staff") return 1;
                             if (a.pinned && !b.pinned) return -1;
-                            if (!a.pinned && b.pinned) return 1;
-                            return (a.name || a.email).localeCompare(b.name || b.email);
+                            if (!b.pinned && b.pinned) return 1;
+                            return (a.displayName || a.email).localeCompare(b.displayName || b.email);
                           })
                           .map(person => {
-                            const avatar = generateAvatar(person.name, person.email, person.photoURL);
+                            const avatar = generateAvatar(person.displayName, person.email, person.photoURL);
                             const roleClass = person.role === "staff" ? "role-staff" : "role-student";
                             const roleText = person.role === "staff" ? "Staff" : "Student";
                             return (
@@ -459,7 +544,7 @@ const handleBulkAddStudents = async () => {
                                     {avatar.photoURL ? (
                                       <img
                                         src={avatar.photoURL}
-                                        alt={person.name}
+                                        alt={person.displayName}
                                         onError={e => {
                                           e.target.src = '';
                                           e.target.style.display = 'none';
@@ -583,6 +668,7 @@ const handleBulkAddStudents = async () => {
                 <ProfileModal
                   person={profilePerson}
                   className={classData.name}
+                  classTeacher={classData.teacher}
                   onClose={() => setProfileOpen(false)}
                 />
               )}
@@ -595,9 +681,13 @@ const handleBulkAddStudents = async () => {
           <FontAwesomeIcon icon={faStream} />
           <span>Stream</span>
         </Link>
+        <Link to={`/staffassignments/${classId}`} className="nav-item active">
+                  <FontAwesomeIcon icon={faClipboardList} />
+                  <span>Assignments</span>
+                </Link>
         <Link to={`/staffassessment/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faClipboardList} />
-          <span>Notes</span>
+          <span>Learning AID</span>
         </Link>
         <Link to={`/staffpeople/${classId}`} className="nav-item active">
           <FontAwesomeIcon icon={faUsers} />
@@ -605,7 +695,7 @@ const handleBulkAddStudents = async () => {
         </Link>
         <Link to={`/staffchat/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faComments} />
-          <span>Chat</span>
+          <span>Discussion Forum</span>
         </Link>
         <Link to={`/studentlogindetails/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faClock} />
@@ -616,14 +706,14 @@ const handleBulkAddStudents = async () => {
   );
 };
 
-const ProfileModal = ({ person, className, onClose }) => {
-  const avatar = generateAvatar(person.name, person.email, person.photoURL);
+const ProfileModal = ({ person, className, classTeacher, onClose }) => {
+  const avatar = generateAvatar(person.displayName, person.email, person.photoURL);
   return (
     <div className="assignment-modal">
       <div className="modal-content profile-modal">
         <div className="modal-header">
-          <h3>{person.name}</h3>
-          <button onClick={onClose}>×</button>
+          <h3>{person.role === 'staff' ? classTeacher : person.displayName}</h3>
+          <button onClose={onClose}>×</button>
         </div>
         <div className="modal-body">
           <div className="profile-content">
@@ -635,7 +725,7 @@ const ProfileModal = ({ person, className, onClose }) => {
                 {avatar.photoURL ? (
                   <img
                     src={avatar.photoURL}
-                    alt={person.name}
+                    alt={person.displayName}
                     onError={(e) => {
                       e.target.src = '';
                       e.target.style.display = 'none';
@@ -646,7 +736,7 @@ const ProfileModal = ({ person, className, onClose }) => {
                 )}
               </div>
               <div className="profile-info">
-                <h2>{person.name}</h2>
+                <h2>{person.role === 'staff' ? classTeacher : person.displayName}</h2>
                 <div className={`role-badge ${person.role === "staff" ? "role-staff" : "role-student"}`}>
                   {person.role === "staff" ? "Staff Member" : "Student"}
                 </div>
@@ -661,24 +751,6 @@ const ProfileModal = ({ person, className, onClose }) => {
                 <div className="info-value">{className || 'N/A'}</div>
                 <div className="info-label">Role:</div>
                 <div className="info-value">{person.role === "staff" ? "Staff" : "Student"}</div>
-                {person.role === "staff" && (
-                  <>
-                    <div className="info-label">Position:</div>
-                    <div className="info-value">{person.position || 'N/A'}</div>
-                    <div className="info-label">Department:</div>
-                    <div className="info-value">{person.department || 'N/A'}</div>
-                  </>
-                )}
-                {person.role === "student" && (
-                  <>
-                    <div className="info-label">Roll Number:</div>
-                    <div className="info-value">{person.rollNumber || 'N/A'}</div>
-                    <div className="info-label">Batch:</div>
-                    <div className="info-value">{person.batch || 'N/A'}</div>
-                    <div className="info-label">Major:</div>
-                    <div className="info-value">{person.major || 'N/A'}</div>
-                  </>
-                )}
               </div>
             </div>
           </div>

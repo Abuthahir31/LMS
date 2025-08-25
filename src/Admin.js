@@ -5,6 +5,9 @@ import axios from 'axios';
 import Papa from 'papaparse';
 import './Admin.css';
 
+// Regular expression for email validation
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function Admin() {
   const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffPassword, setNewStaffPassword] = useState('');
@@ -18,6 +21,8 @@ function Admin() {
   const [staffCSV, setStaffCSV] = useState(null);
   const [studentCSV, setStudentCSV] = useState(null);
   const [bulkLoading, setBulkLoading] = useState({ staff: false, student: false });
+  const [staffSearch, setStaffSearch] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
   
   // Modal states
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
@@ -31,11 +36,11 @@ function Admin() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const staffResponse = await axios.get('https://lms-iap4.onrender.com/api/staff');
+        const staffResponse = await axios.get('https://uelms.onrender.com/api/staff');
         const staff = staffResponse.data?.filter(s => s?.email).map(s => s.email.toLowerCase()) || [];
         setStaffEmails(staff);
 
-        const studentsResponse = await axios.get('https://lms-iap4.onrender.com/api/students');
+        const studentsResponse = await axios.get('https://uelms.onrender.com/api/students');
         const students = studentsResponse.data?.filter(s => s?.email).map(s => s.email.toLowerCase()) || [];
         setStudentEmails(students);
       } catch (err) {
@@ -54,8 +59,8 @@ function Admin() {
       setAddStaffLoading(false);
       return;
     }
-    if (!newStaffEmail.endsWith('@gmail.com')) {
-      alert('Please use a valid Gmail address for staff.');
+    if (!emailRegex.test(newStaffEmail)) {
+      alert('Please enter a valid email address.');
       setAddStaffLoading(false);
       return;
     }
@@ -68,11 +73,11 @@ function Admin() {
     try {
       await createUserWithEmailAndPassword(auth, newStaffEmail, newStaffPassword);
       await signOut(auth);
-      await axios.post('https://lms-iap4.onrender.com/api/staff', { email: newStaffEmail });
+      await axios.post('https://uelms.onrender.com/api/staff', { email: newStaffEmail });
       alert(`Staff user ${newStaffEmail} added successfully!`);
       setNewStaffEmail('');
       setNewStaffPassword('');
-      const staffResponse = await axios.get('https://lms-iap4.onrender.com/api/staff');
+      const staffResponse = await axios.get('https://uelms.onrender.com/api/staff');
       setStaffEmails(staffResponse.data.filter(staff => staff && staff.email).map(staff => staff.email.toLowerCase()));
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') alert('This email is already registered.');
@@ -93,8 +98,8 @@ function Admin() {
       setAddStudentLoading(false);
       return;
     }
-    if (!newStudentEmail.endsWith('@gmail.com')) {
-      alert('Please use a valid Gmail address for student.');
+    if (!emailRegex.test(newStudentEmail)) {
+      alert('Please enter a valid email address.');
       setAddStudentLoading(false);
       return;
     }
@@ -107,11 +112,11 @@ function Admin() {
     try {
       await createUserWithEmailAndPassword(auth, newStudentEmail, newStudentPassword);
       await signOut(auth);
-      await axios.post('https://lms-iap4.onrender.com/api/students', { email: newStudentEmail });
+      await axios.post('https://uelms.onrender.com/api/students', { email: newStudentEmail });
       alert(`Student user ${newStudentEmail} added successfully!`);
       setNewStudentEmail('');
       setNewStudentPassword('');
-      const studentsResponse = await axios.get('https://lms-iap4.onrender.com/api/students');
+      const studentsResponse = await axios.get('https://uelms.onrender.com/api/students');
       setStudentEmails(studentsResponse.data.filter(student => student && student.email).map(student => student.email.toLowerCase()));
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') alert('This email is already registered.');
@@ -136,30 +141,31 @@ function Admin() {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      transform: (value) => value.trim(),
       complete: async (results) => {
         let users = results.data;
         users = users.filter(u =>
           u.email && u.password &&
-          u.email.endsWith('@gmail.com') && u.password.length >= 6
+          emailRegex.test(u.email) && u.password.length >= 6
         );
 
         if (users.length === 0) {
-          alert('No valid rows in CSV!');
+          alert('No valid rows in CSV! Ensure each row has a valid email and password (min 6 characters).');
           setBulkLoading((prev) => ({ ...prev, [type]: false }));
           return;
         }
 
         try {
           await axios.post(
-            `https://lms-iap4.onrender.com/api/bulk-users?type=${type}`,
+            `https://uelms.onrender.com/api/bulk-users?type=${type}`,
             { users }
           );
           alert(`Bulk ${type} users uploaded successfully!`);
           if (type === 'staff') {
-            const staffResponse = await axios.get('https://lms-iap4.onrender.com/api/staff');
+            const staffResponse = await axios.get('https://uelms.onrender.com/api/staff');
             setStaffEmails(staffResponse.data.filter(staff => staff && staff.email).map(staff => staff.email.toLowerCase()));
           } else {
-            const studentsResponse = await axios.get('https://lms-iap4.onrender.com/api/students');
+            const studentsResponse = await axios.get('https://uelms.onrender.com/api/students');
             setStudentEmails(studentsResponse.data.filter(student => student && student.email).map(student => student.email.toLowerCase()));
           }
         } catch (err) {
@@ -169,6 +175,10 @@ function Admin() {
           if (type === 'staff') setStaffCSV(null);
           else setStudentCSV(null);
         }
+      },
+      error: (err) => {
+        alert(`Error parsing CSV: ${err.message}`);
+        setBulkLoading((prev) => ({ ...prev, [type]: false }));
       }
     });
   };
@@ -177,7 +187,7 @@ function Admin() {
     setDeleteLoading(prev => ({ ...prev, [email]: true }));
 
     try {
-      await axios.delete('https://lms-iap4.onrender.com/api/users', { data: { email, type } });
+      await axios.delete('https://uelms.onrender.com/api/users', { data: { email, type } });
       alert(`User ${email} deleted successfully from ${type}.`);
       if (type === 'staff') setStaffEmails(prev => prev.filter(e => e !== email.toLowerCase()));
       else setStudentEmails(prev => prev.filter(e => e !== email.toLowerCase()));
@@ -198,7 +208,17 @@ function Admin() {
     setShowAddStudentModal(false);
     setShowStaffListModal(false);
     setShowStudentListModal(false);
+    setStaffSearch('');
+    setStudentSearch('');
   };
+
+  // Filter emails based on search input
+  const filteredStaffEmails = staffEmails.filter(email =>
+    email.toLowerCase().includes(staffSearch.toLowerCase())
+  );
+  const filteredStudentEmails = studentEmails.filter(email =>
+    email.toLowerCase().includes(studentSearch.toLowerCase())
+  );
 
   return (
     <div className="admin-container">
@@ -250,7 +270,7 @@ function Admin() {
                 <form onSubmit={handleAddStaff}>
                   <input
                     type="email"
-                    placeholder="Staff Gmail Address"
+                    placeholder="Staff Email Address"
                     value={newStaffEmail}
                     onChange={(e) => setNewStaffEmail(e.target.value)}
                     className="form-input"
@@ -315,7 +335,7 @@ function Admin() {
                 <form onSubmit={handleAddStudent}>
                   <input
                     type="email"
-                    placeholder="Student Gmail Address"
+                    placeholder="Student Email Address"
                     value={newStudentEmail}
                     onChange={(e) => setNewStudentEmail(e.target.value)}
                     className="form-input"
@@ -370,18 +390,27 @@ function Admin() {
         <div className="modal-overlay" onClick={closeAllModals}>
           <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Staff List ({staffEmails.length})</h3>
+              <h3>Staff List ({filteredStaffEmails.length})</h3>
               <button className="close-button" onClick={closeAllModals}>×</button>
             </div>
             
             <div className="modal-body">
-              {staffEmails.length === 0 ? (
+              <div className="search-section">
+                <input
+                  type="text"
+                  placeholder="Search staff by email..."
+                  value={staffSearch}
+                  onChange={(e) => setStaffSearch(e.target.value)}
+                  className="form-input search-input"
+                />
+              </div>
+              {filteredStaffEmails.length === 0 ? (
                 <div className="empty-state">
-                  <p>No staff members found.</p>
+                  <p>{staffSearch ? 'No staff members match your search.' : 'No staff members found.'}</p>
                 </div>
               ) : (
                 <div className="user-list">
-                  {staffEmails.map(email => (
+                  {filteredStaffEmails.map(email => (
                     <div key={email} className="user-item">
                       <span className="user-email">{email}</span>
                       <button
@@ -405,18 +434,27 @@ function Admin() {
         <div className="modal-overlay" onClick={closeAllModals}>
           <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Student List ({studentEmails.length})</h3>
+              <h3>Student List ({filteredStudentEmails.length})</h3>
               <button className="close-button" onClick={closeAllModals}>×</button>
             </div>
             
             <div className="modal-body">
-              {studentEmails.length === 0 ? (
+              <div className="search-section">
+                <input
+                  type="text"
+                  placeholder="Search students by email..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  className="form-input search-input"
+                />
+              </div>
+              {filteredStudentEmails.length === 0 ? (
                 <div className="empty-state">
-                  <p>No students found.</p>
+                  <p>{studentSearch ? 'No students match your search.' : 'No students found.'}</p>
                 </div>
               ) : (
                 <div className="user-list">
-                  {studentEmails.map(email => (
+                  {filteredStudentEmails.map(email => (
                     <div key={email} className="user-item">
                       <span className="user-email">{email}</span>
                       <button

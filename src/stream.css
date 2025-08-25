@@ -1,4 +1,3 @@
-/* stream.css */
 * {
   margin: 0;
   padding: 0;
@@ -317,6 +316,7 @@ body {
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
+  color: #dc3545; /* Red for close icon */
 }
 
 .modal-body {
@@ -435,9 +435,27 @@ body {
 
 .option-selection {
   display: flex;
+  flex-direction: column;
   gap: 20px;
   justify-content: center;
   margin-bottom: 20px;
+}
+
+.meeting-options {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.option-divider {
+  border: 0;
+  border-top: 1px solid #ddd;
+  margin: 20px 0;
+}
+
+.assignment-option {
+  display: flex;
+  justify-content: center;
 }
 
 .option-btn {
@@ -449,6 +467,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
+  min-width: 120px;
 }
 
 .option-btn:hover {
@@ -466,6 +485,30 @@ body {
   font-size: 1rem;
 }
 
+.option-btn.meet-google {
+  border-color: #34a853;
+}
+
+.option-btn.meet-google.selected {
+  background-color: #e6f4ea;
+}
+
+.option-btn.meet-zoom {
+  border-color: #2d8cff;
+}
+
+.option-btn.meet-zoom.selected {
+  background-color: #e6f0ff;
+}
+
+.option-btn.meet-teams {
+  border-color: #6264a7;
+}
+
+.option-btn.meet-teams.selected {
+  background-color: #f0eff5;
+}
+
 .staff-controls {
   display: flex;
   gap: 8px;
@@ -478,6 +521,7 @@ body {
   cursor: pointer;
   font-size: 1rem;
   color: #555;
+  padding: 5px;
 }
 
 .staff-controls button:hover {
@@ -487,6 +531,18 @@ body {
 .staff-controls button:disabled {
   color: #ccc;
   cursor: not-allowed;
+}
+
+.edit-btn .fa-edit {
+  color: #007bff; /* Blue for edit */
+}
+
+.delete-btn .fa-trash {
+  color: #dc3545; /* Red for delete */
+}
+
+.submissions-btn .fa-eye {
+  color: #28a745; /* Green for view submissions */
 }
 
 .submissions-btn {
@@ -594,6 +650,18 @@ body {
   gap: 8px;
 }
 
+.view-file-btn .fa-eye {
+  color: #4285f4; /* Blue for view file */
+}
+
+.download-file-btn .fa-download {
+  color: #28a745; /* Green for download */
+}
+
+.delete-submission-btn .fa-trash {
+  color: #dc3545; /* Red for delete submission */
+}
+
 .bottom-nav-fixed {
   position: fixed;
   bottom: 0;
@@ -624,6 +692,17 @@ body {
 .nav-item.active {
   color: #007bff;
 }
+
+.nav-item .fa-stream { color: #6c757d; } /* Grey for stream */
+.nav-item .fa-clipboard-list { color: #6c757d; } /* Grey for assignments */
+.nav-item .fa-users { color: #6c757d; } /* Grey for people */
+.nav-item .fa-comments { color: #6c757d; } /* Grey for discussion */
+.nav-item .fa-clock { color: #6c757d; } /* Grey for track login */
+.nav-item.active .fa-stream { color: #007bff; }
+.nav-item.active .fa-clipboard-list { color: #007bff; }
+.nav-item.active .fa-users { color: #007bff; }
+.nav-item.active .fa-comments { color: #007bff; }
+.nav-item.active .fa-clock { color: #007bff; }
 
 .nav-item span {
   margin-top: 5px;
@@ -716,43 +795,61 @@ body {
 
 .open-form-btn .fa-external-link-alt {
   font-size: 14px; 
+  color: #fff; /* White for external link in open form */
 }
 
 /* Meeting type specific styles */
 .meet-card.meet-zoom {
-  border-left: 4px solid #2d8cff; /* Zoom blue */
+  border-left: 4px solid #2d8cff; 
 }
 
 .meet-card.meet-teams {
-  border-left: 4px solid #6264a7; /* Teams purple */
+  border-left: 4px solid #6264a7; 
 }
 
 .meet-card.meet-google {
-  border-left: 4px solid #34a853; /* Google green */
+  border-left: 4px solid #34a853; 
 }
 
-.option-btn.meet-zoom {
-  border-color: #2d8cff;
+.form-link-note {
+  padding: 10px 16px;
+  background-color: #ffe5e5; /* Light red background for note */
+  border: 1px solid #ff4d4f; /* Red border */
+  border-radius: 6px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
 }
 
-.option-btn.meet-zoom.selected {
-  background-color: #e6f0ff;
+.form-note-text {
+  color: #d32f2f; /* Red text */
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.option-btn.meet-teams {
-  border-color: #6264a7;
+.view-form-btn {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.option-btn.meet-teams.selected {
-  background-color: #f0eff5;
+.view-form-btn:hover {
+  background-color: #357ae8;
 }
 
-.option-btn.meet-google {
-  border-color: #34a853;
+.view-form-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
 
-.option-btn.meet-google.selected {
-  background-color: #e6f4ea;
+.view-form-btn .fa-external-link-alt {
+  color: #fff; /* White for view form external link */
 }
 
 /* Responsive styles */
@@ -780,6 +877,11 @@ body {
   .files-list {
     grid-template-columns: 1fr;
   }
+
+  .meeting-options {
+    flex-direction: column;
+    gap: 10px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -798,8 +900,12 @@ body {
     width: 100%;
   }
 
-  .option-selection {
+  .meeting-options {
     flex-direction: column;
+  }
+
+  .option-btn {
+    width: 100%;
   }
 
   .open-form-btn {
@@ -810,39 +916,4 @@ body {
   .open-form-btn .fa-external-link-alt {
     font-size: 12px;
   }
-}
-.form-link-note {
-  padding: 10px 16px;
-  background-color: #ffe5e5; /* Light red background for note */
-  border: 1px solid #ff4d4f; /* Red border */
-  border-radius: 6px;
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-}
-
-.form-note-text {
-  color: #d32f2f; /* Red text */
-  font-size: 14px;
-  font-weight: 500;
-}
-
-
-.view-form-btn {
-  background-color: #4285f4;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.view-form-btn:hover {
-  background-color: #357ae8;
-}
-.view-form-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
 }

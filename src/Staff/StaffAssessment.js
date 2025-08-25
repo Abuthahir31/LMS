@@ -19,7 +19,7 @@ import '../assessment.css';
 import axios from 'axios';
 
 function Assessment() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentUnit, setCurrentUnit] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -48,6 +48,35 @@ function Assessment() {
   });
   const [data, setData] = useState({});
 
+  // Function to render text with clickable links
+  const renderTextWithLinks = (text) => {
+    if (!text) return null;
+    
+    // Regular expression to match URLs starting with https://
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // Split the text into parts, some will be links and some will be normal text
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a 
+            key={index} 
+            href={part} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: '#4285f4', textDecoration: 'underline' }}
+          >
+            {part}
+          </a>
+        );
+      } else {
+        return part;
+      }
+    });
+  };
+
   useEffect(() => {
     const savedClassData = JSON.parse(localStorage.getItem('currentClass'));
     if (savedClassData) {
@@ -68,7 +97,7 @@ function Assessment() {
     const fetchUnits = async () => {
       try {
         const classId = savedClassData?.id || 'default_class_id';
-        const response = await axios.get(`https://lms-iap4.onrender.com/api/units/${classId}`);
+        const response = await axios.get(`http://uelms.onrender.com/api/units/${classId}`);
         const units = response.data.reduce((acc, unit) => ({
           ...acc,
           [unit._id]: {
@@ -206,7 +235,7 @@ function Assessment() {
     };
 
     try {
-      const response = await axios.post('https://lms-iap4.onrender.com/api/units', payload);
+      const response = await axios.post('http://uelms.onrender.com/api/units', payload);
       const newUnit = response.data;
       setData(prev => ({
         ...prev,
@@ -245,7 +274,7 @@ function Assessment() {
     };
 
     try {
-      const response = await axios.put(`https://lms-iap4.onrender.com/api/units/${editUnitId}`, payload);
+      const response = await axios.put(`http://uelms.onrender.com/api/units/${editUnitId}`, payload);
       const updatedUnit = response.data;
       setData(prev => ({
         ...prev,
@@ -300,7 +329,7 @@ function Assessment() {
         formDataToSend.append('notesContent', notesContent);
       }
 
-      const response = await axios.post(`https://lms-iap4.onrender.com/api/units/${currentUnit}/files`, formDataToSend, {
+      const response = await axios.post(`http://uelms.onrender.com/api/units/${currentUnit}/files`, formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -350,7 +379,7 @@ function Assessment() {
         formDataToSend.append('notesContent', notesContent);
       }
 
-      const response = await axios.put(`https://lms-iap4.onrender.com/api/units/${currentUnit}/files/${editFileId}`, formDataToSend, {
+      const response = await axios.put(`http://uelms.onrender.com/api/units/${currentUnit}/files/${editFileId}`, formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -379,7 +408,7 @@ function Assessment() {
   const deleteUnit = async (key) => {
     if (window.confirm('Delete this unit?')) {
       try {
-        await axios.delete(`https://lms-iap4.onrender.com/api/units/${key}`);
+        await axios.delete(`http://uelms.onrender.com/api/units/${key}`);
         const newData = { ...data };
         delete newData[key];
         setData(newData);
@@ -393,7 +422,7 @@ function Assessment() {
   const deleteFile = async (fileId) => {
     if (currentUnit && window.confirm('Delete this file?')) {
       try {
-        const response = await axios.delete(`https://lms-iap4.onrender.com/api/units/${currentUnit}/files/${fileId}`);
+        const response = await axios.delete(`http://uelms.onrender.com/api/units/${currentUnit}/files/${fileId}`);
         setData(prev => ({
           ...prev,
           [currentUnit]: response.data
@@ -427,7 +456,7 @@ function Assessment() {
   };
 
   const getFileUrl = (fileId) => {
-    return `https://lms-iap4.onrender.com/api/units/files/${fileId}`;
+    return `http://uelms.onrender.com/api/units/files/${fileId}`;
   };
 
   return (
@@ -488,9 +517,13 @@ function Assessment() {
               <FontAwesomeIcon icon={faStream} />
               <span>Stream</span>
             </Link>
+            <Link to={`/staffassignments/${classData.id}`} className="nav-item">
+              <FontAwesomeIcon icon={faClipboardList} />
+              <span>Assignments</span>
+            </Link>
             <Link to={`/staffassessment/${classData.id}`} className="nav-item active">
               <FontAwesomeIcon icon={faClipboardList} />
-              <span>Notes</span>
+              <span>Learning AID</span>
             </Link>
             <Link to={`/staffpeople/${classData.id}`} className="nav-item">
               <FontAwesomeIcon icon={faUsers} />
@@ -498,7 +531,7 @@ function Assessment() {
             </Link>
             <Link to={`/staffchat/${classData.id}`} className="nav-item">
               <FontAwesomeIcon icon={faComments} />
-              <span>Chat</span>
+              <span>Discussion Forum</span>
             </Link>
             <Link to={`/studentlogindetails/${classData.id}`} className="nav-item">
               <FontAwesomeIcon icon={faClock} />
@@ -558,7 +591,7 @@ function Assessment() {
                         <div className="file-preview-section">
                           <h4>File Preview: {selectedFile.title}</h4>
                           {selectedFile.isNotes ? (
-                            <div className="file-content">{selectedFile.content}</div>
+                            <div className="file-content">{renderTextWithLinks(selectedFile.content)}</div>
                           ) : selectedFile.type?.startsWith('image/') ? (
                             <img
                               src={getFileUrl(selectedFile._id)}
@@ -590,7 +623,7 @@ function Assessment() {
                           ) : selectedFile.type?.startsWith('text/') ||
                             selectedFile.type === 'application/json' ||
                             selectedFile.name?.match(/\.(txt|js|html|css|md)$/) ? (
-                            <div className="file-content">{selectedFile.content}</div>
+                            <div className="file-content">{renderTextWithLinks(selectedFile.content)}</div>
                           ) : (
                             <div className="file-info">
                               <p>This file type cannot be previewed directly.</p>
@@ -756,7 +789,7 @@ function Assessment() {
                             ) : preview.type === 'application/pdf' ? (
                               <iframe src={preview.url} title="PDF Preview" className="file-preview pdf-preview"></iframe>
                             ) : preview.type === 'text' ? (
-                              <div className="file-content">{preview.content}</div>
+                              <div className="file-content">{renderTextWithLinks(preview.content)}</div>
                             ) : (
                               <div className="file-info">
                                 <p>Preview not available for {preview.name} ({preview.type}).</p>
@@ -778,7 +811,7 @@ function Assessment() {
                         {preview && preview.type === 'text' && (
                           <div className="file-preview-section">
                             <h4>Notes Preview</h4>
-                            <div className="file-content">{preview.content}</div>
+                            <div className="file-content">{renderTextWithLinks(preview.content)}</div>
                           </div>
                         )}
                       </div>
@@ -863,7 +896,7 @@ function Assessment() {
                             ) : preview.type === 'application/pdf' ? (
                               <iframe src={preview.url} title="PDF Preview" className="file-preview pdf-preview"></iframe>
                             ) : preview.type === 'text' ? (
-                              <div className="file-content">{preview.content}</div>
+                              <div className="file-content">{renderTextWithLinks(preview.content)}</div>
                             ) : (
                               <div className="file-info">
                                 <p>Preview not available for {preview.name} ({preview.type}).</p>
@@ -885,7 +918,7 @@ function Assessment() {
                         {preview && preview.type === 'text' && (
                           <div className="file-preview-section">
                             <h4>Notes Preview</h4>
-                            <div className="file-content">{preview.content}</div>
+                            <div className="file-content">{renderTextWithLinks(preview.content)}</div>
                           </div>
                         )}
                       </div>

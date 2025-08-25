@@ -59,6 +59,14 @@ body {
   position: relative;
 }
 
+.class-teacher {
+  font-size: 14px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .announce {
   background: white;
   border-radius: 8px;
@@ -105,7 +113,7 @@ body {
 
 .add-btn {
   background-color: #1a73e8;
-  color: white;
+  color: rgb(11, 11, 11);
   border: none;
   padding: 10px 16px;
   border-radius: 8px;
@@ -200,9 +208,29 @@ body {
   color: #1a73e8;
 }
 
+.action-btn.edit {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
 .action-btn.delete {
   background: #fce8e6;
   color: #d93025;
+}
+
+.action-btn.download {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.action-btn.print {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.action-btn.fullscreen {
+  background: #e8f0fe;
+  color: #1a73e8;
 }
 
 .action-btn:hover {
@@ -222,6 +250,10 @@ body {
   padding: 12px 0;
   box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
   z-index: 999;
+}
+
+.bottom-nav-fixed.with-sidebar {
+  left: 280px;
 }
 
 .bottom-nav-fixed .nav-item {
@@ -546,46 +578,111 @@ body {
   text-decoration: none;
 }
 
-/* Responsive Styles */
-@media (max-width: 768px) {
-  .units-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .bottom-nav-fixed {
-    left: 0;
-  }
-  
-  .modal-content {
-    width: 95%;
-  }
-  
-  .file-preview.pdf-preview {
-    height: 400px;
-  }
+.file-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
-@media (max-width: 480px) {
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .form-buttons {
-    flex-direction: column;
-  }
-  
-  .btn {
-    width: 100%;
-  }
-  
-  .file-preview.pdf-preview {
-    height: 300px;
-  }
+.file-preview-header h4 {
+  font-size: 14px;
+  font-weight: 500;
+  color: #3c4043;
+  margin: 0;
 }
 
-/* File Preview Section in Add File Modal */
+.file-preview-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Loading and Error States */
+.loading-assignments {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+}
+
+.loading-assignments p {
+  margin-top: 16px;
+  font-size: 14px;
+  color: #5f6368;
+}
+
+.error-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e8eaed;
+  margin: 20px;
+}
+
+.error-message h3 {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #3c4043;
+  margin: 12px 0;
+}
+
+.error-message p {
+  font-size: 14px;
+  color: #5f6368;
+  margin-bottom: 16px;
+}
+
+.retry-btn {
+  background: #1a73e8;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retry-btn:hover {
+  background: #1765cc;
+  transform: translateY(-1px);
+}
+
+.no-assignments {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e8eaed;
+  margin: 20px;
+}
+
+.no-assignments h3 {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #3c4043;
+  margin: 12px 0;
+}
+
+.no-assignments p {
+  font-size: 14px;
+  color: #5f6368;
+}
+
+/* File Preview Section */
 .file-preview-section {
   margin-top: 16px;
   padding: 16px;
@@ -617,13 +714,53 @@ body {
   margin-top: 0;
 }
 
-/* Responsive Adjustments */
+/* Responsive Styles */
 @media (max-width: 768px) {
+  .units-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-nav-fixed {
+    left: 0;
+  }
+
+  .bottom-nav-fixed.with-sidebar {
+    left: 0;
+  }
+
+  .modal-content {
+    width: 95%;
+  }
+
+  .file-preview.pdf-preview {
+    height: 400px;
+  }
+
   .unit-content {
     flex-direction: column;
   }
 
   .file-preview-section {
     flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .form-buttons {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .file-preview.pdf-preview {
+    height: 300px;
   }
 }

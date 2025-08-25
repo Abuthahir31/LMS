@@ -11,12 +11,12 @@ import axios from 'axios';
 import { auth } from '../firebase';
 import './ChatStyles.css';
 
-const BASE_URL = 'https://lms-iap4.onrender.com';
+const BASE_URL = 'https://uelms.onrender.com';
 
 const StaffChat = () => {
   const { classId } = useParams();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [classData, setClassData] = useState({
     name: 'Loading...',
     section: '',
@@ -395,9 +395,13 @@ const StaffChat = () => {
           <FontAwesomeIcon icon={faStream} />
           <span>Stream</span>
         </Link>
+        <Link to={`/staffassignments/${classId}`} className="nav-item">
+                  <FontAwesomeIcon icon={faClipboardList} />
+                  <span>Assignments</span>
+                </Link>
         <Link to={`/staffassessment/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faClipboardList} />
-          <span>Notes</span>
+          <span>Learning AID</span>
         </Link>
         <Link to={`/staffpeople/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faUsers} />
@@ -405,7 +409,7 @@ const StaffChat = () => {
         </Link>
         <Link to={`/staffchat/${classId}`} className="nav-item active">
           <FontAwesomeIcon icon={faComments} />
-          <span>Chat</span>
+          <span>Discussion Forum</span>
         </Link>
         <Link to={`/studentlogindetails/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faClock} />

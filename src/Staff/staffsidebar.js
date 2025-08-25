@@ -33,7 +33,7 @@ const StaffSidebar = ({ isOpen }) => {
   const fetchClasses = async (userId) => {
     try {
       setLoading(true);
-      const response = await axios.get(`https://lms-iap4.onrender.com/api/classes?staffId=${userId}`);
+      const response = await axios.get(`https://uelms.onrender.com/api/classes?staffId=${userId}`);
       const staffClasses = response.data.classes.filter(cls => cls.staffId === userId);
       setClasses(staffClasses);
     } catch (error) {

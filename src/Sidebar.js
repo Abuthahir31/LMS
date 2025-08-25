@@ -16,7 +16,7 @@ const Sidebar = ({ isOpen, userRole = "student" }) => {
   const [studentEmail, setStudentEmail] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  useEffect(() => { 
     const unsubscribe = auth.onAuthStateChanged((user) => {
       console.log('Auth state changed - user:', user);
       if (user) {
@@ -67,7 +67,7 @@ const Sidebar = ({ isOpen, userRole = "student" }) => {
       if (!email) {
         throw new Error('User email not found');
       }
-      const response = await fetch(`https://lms-iap4.onrender.com/api/classes/student/${uid}?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`https://uelms.onrender.com/api/classes/student/${uid}?email=${encodeURIComponent(email)}`);
       console.log('Response status:', response.status);
       const data = await response.json();
       console.log('Fetched classes data:', data);
@@ -224,7 +224,7 @@ const Sidebar = ({ isOpen, userRole = "student" }) => {
       <div className="sidebar-section">
         <div className="section-header">Navigation</div>
         <button
-          className={`sidebar-button ${activeItem === "home" ? "active" : ""}`}
+          className={`sidebar-button `}
           onClick={handleHomeClick}
         >
           <span className="material-symbols-outlined sidebar-icon">home</span>

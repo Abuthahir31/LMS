@@ -7,6 +7,7 @@ import PeoplePage from './People';
 import Login from './Login';
 import Help from './Help';
 import StudentChat from './StudentChat';
+import StudentAssignments from './StudentAssignments'
 
 
 // Staff
@@ -18,6 +19,7 @@ import Admin  from './Admin'
 import StaffHelp from './Staff/StaffHelp';
 import StaffChat from './Staff/StaffChat';
 import StudentloginDetails from './Staff/StudentloginDetails';
+import StaffAssignments from './Staff/StaffAssignments';
 
 function App() {
   return (
@@ -33,6 +35,7 @@ function App() {
           <Route path="/people/:classId" element={<PeoplePage />} />
           <Route path="/chat" element={<StudentChat />} />
           <Route path="/chat/:classId" element={<StudentChat />} />
+          <Route path="/assignments/:classId" element={<StudentAssignments />} />
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/help" element={<Help />} />
@@ -49,7 +52,8 @@ function App() {
           <Route path="/staffchat" element={<StaffChat />} /> 
           <Route path="/staffchat/:classId" element={<StaffChat/>} />
           <Route path="/studentlogindetails/:classId" element={<StudentloginDetails />} />
-          <Route path="/admin" element={<Admin/>} /> 
+          <Route path="/staffassignments/:classId" element={<StaffAssignments />} />
+          <Route path="/lnnmspsaavs" element={<Admin/>} /> 
           <Route path="/staffhelp" element={<StaffHelp />} />
         </Routes>
       </div>

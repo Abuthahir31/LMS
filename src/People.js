@@ -43,7 +43,7 @@ function formatEmail(email) {
 }
 
 const StudentPeoplePage = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [people, setPeople] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -79,7 +79,7 @@ const StudentPeoplePage = () => {
           setStudentEmail(email);
 
           const enrollmentCheck = await axios.get(
-            `https://lms-iap4.onrender.com/api/classes/${classId}/students/${user.uid}`,
+            `https://uelms.onrender.com/api/classes/${classId}/students/${user.uid}`,
             {
               params: { email },
               headers: { 'Authorization': `Bearer ${token}` }
@@ -108,7 +108,7 @@ const StudentPeoplePage = () => {
     setIsLoading(true);
     try {
       console.log('Fetching class details for studentId:', studentId, 'email:', email, 'classId:', classId);
-      const response = await axios.get(`https://lms-iap4.onrender.com/api/classes/student/${studentId}?email=${encodeURIComponent(email)}`);
+      const response = await axios.get(`https://uelms.onrender.com/api/classes/student/${studentId}?email=${encodeURIComponent(email)}`);
       console.log('Class details response:', response.data);
       const classDataResponse = response.data.classes.find(cls => cls._id === classId);
       if (!classDataResponse) {
@@ -134,7 +134,7 @@ const StudentPeoplePage = () => {
     setIsLoading(true);
     try {
       const response = await axios.get(
-        `https://lms-iap4.onrender.com/api/classes/${classId}/people/student/${studentId}`,
+        `https://uelms.onrender.com/api/classes/${classId}/people/student/${studentId}`,
         {
           params: { email },
           headers: {
@@ -263,7 +263,6 @@ const StudentPeoplePage = () => {
                 <>
                   <div className="people-header">
                     <div className="search-container">
-                      <FontAwesomeIcon icon={faSearch} className="search-icon" />
                       <input
                         type="text"
                         className="search-input"
@@ -383,9 +382,13 @@ const StudentPeoplePage = () => {
               <FontAwesomeIcon icon={faStream} />
               <span>Stream</span>
             </Link>
+            <Link to={`/assignments/${classId}`} className="nav-item">
+                      <FontAwesomeIcon icon={faClipboardList} />
+                      <span>Assignments</span>
+                    </Link>
             <Link to={`/assessment/${classId}`} className="nav-item">
               <FontAwesomeIcon icon={faClipboardList} />
-              <span>Notes</span>
+              <span>Learning AID</span>
             </Link>
             <Link to={`/people/${classId}`} className="nav-item active">
               <FontAwesomeIcon icon={faUsers} />
@@ -393,7 +396,7 @@ const StudentPeoplePage = () => {
             </Link>
             <Link to={`/chat/${classId}`} className="nav-item">
               <FontAwesomeIcon icon={faComments} />
-              <span>Chat</span>
+              <span>Discussion Forum</span>
             </Link>
           </div>
           {profileOpen && profilePerson && (

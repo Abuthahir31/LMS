@@ -2,8 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faClipboardList, faUsers, faStream, faArrowLeft,
-  faUser, faExclamationTriangle, faSpinner,faComments
+  faStream,
+  faClipboardList,
+  faUsers,
+  faArrowLeft,
+  faUser,
+  faExclamationTriangle,
+  faSpinner,
+  faComments,
+  faDownload,
+  faPrint,
+  faExpand,
+  faCompress
 } from '@fortawesome/free-solid-svg-icons';
 import StuNavbar from './StuNavbar';
 import Sidebar from './Sidebar';
@@ -14,11 +24,12 @@ import { auth } from './firebase';
 function StudentAssessment() {
   const { classId } = useParams();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentUnit, setCurrentUnit] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [classData, setClassData] = useState({
     name: 'Loading...',
     section: '',
@@ -34,11 +45,38 @@ function StudentAssessment() {
   const [studentId, setStudentId] = useState(null);
   const [studentEmail, setStudentEmail] = useState(null);
 
+  // Function to render text with clickable links
+  const renderTextWithLinks = (text) => {
+    if (!text) return null;
+    
+    // Regular expression to match URLs starting with https://
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // Split the text into parts, some will be links and some will be normal text
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a 
+            key={index} 
+            href={part} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: '#4285f4', textDecoration: 'underline' }}
+          >
+            {part}
+          </a>
+        );
+      } else {
+        return part;
+      }
+    });
+  };
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
-      console.log('Auth state changed - user:', user);
       if (user) {
-        console.log('User UID:', user.uid, 'Email:', user.email);
         setStudentId(user.uid);
         setStudentEmail(user.email || null);
         if (user.email) {
@@ -68,9 +106,7 @@ function StudentAssessment() {
       setLoadingClass(true);
       setErrorClass(null);
 
-      console.log('Fetching class data for studentId:', studentId, 'email:', email, 'classId:', classId);
-      const response = await axios.get(`https://lms-iap4.onrender.com/api/classes/student/${studentId}?email=${encodeURIComponent(email)}`);
-      console.log('Class data response:', response.data);
+      const response = await axios.get(`http://uelms.onrender.com/api/classes/student/${studentId}?email=${encodeURIComponent(email)}`);
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to fetch classes');
       }
@@ -90,13 +126,10 @@ function StudentAssessment() {
         id: classId
       });
 
-      // Fetch units after class is validated
       await fetchUnits(classId);
     } catch (err) {
       console.error('Class data fetch error:', err);
-      setErrorClass(
-        err.message || 'Failed to load class information. Please try again.'
-      );
+      setErrorClass(err.message || 'Failed to load class information. Please try again.');
     } finally {
       setLoadingClass(false);
     }
@@ -107,11 +140,11 @@ function StudentAssessment() {
       setLoadingUnits(true);
       setErrorUnits(null);
 
-      const response = await axios.get(`https://lms-iap4.onrender.com/api/units/${classId}`);
+      const response = await axios.get(`http://uelms.onrender.com/api/units/${classId}`);
       if (!response.data) {
         throw new Error('No units data returned');
       }
-      
+
       const units = response.data.reduce((acc, unit) => ({
         ...acc,
         [unit._id]: {
@@ -160,6 +193,7 @@ function StudentAssessment() {
     setShowModal(false);
     setCurrentUnit(null);
     setSelectedFile(null);
+    setIsFullScreen(false);
   };
 
   const getClassBackground = () => {
@@ -179,7 +213,105 @@ function StudentAssessment() {
   };
 
   const getFileUrl = (fileId) => {
-    return `https://lms-iap4.onrender.com/api/units/files/${fileId}`;
+    return `http://uelms.onrender.com/api/units/files/${fileId}`;
+  };
+
+  const handleDownload = () => {
+    if (selectedFile) {
+      const url = getFileUrl(selectedFile._id);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = selectedFile.name || selectedFile.title;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handlePrint = () => {
+    if (selectedFile) {
+      const printWindow = window.open('', '_blank');
+      if (selectedFile.isNotes || selectedFile.type?.startsWith('text/') ||
+          selectedFile.type === 'application/json' ||
+          (selectedFile.name && selectedFile.name.match(/\.(txt|js|html|css|md)$/))) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Print: ${selectedFile.title}</title>
+              <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                pre { white-space: pre-wrap; }
+              </style>
+            </head>
+            <body>
+              <h1>${selectedFile.title}</h1>
+              <pre>${selectedFile.content || ''}</pre>
+            </body>
+          </html>
+        `);
+      } else if (selectedFile.type?.startsWith('image/')) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Print: ${selectedFile.title}</title>
+              <style>
+                body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                img { max-width: 100%; max-height: 100%; }
+              </style>
+            </head>
+            <body>
+              <img src="${getFileUrl(selectedFile._id)}" alt="${selectedFile.title}" />
+            </body>
+          </html>
+        `);
+      } else if (selectedFile.type === 'application/pdf') {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Print: ${selectedFile.title}</title>
+              <style>
+                body { margin: 0; }
+                iframe { width: 100%; height: 100vh; border: none; }
+              </style>
+            </head>
+            <body>
+              <iframe src="${getFileUrl(selectedFile._id)}"></iframe>
+            </body>
+          </html>
+        `);
+      } else {
+        printWindow.close();
+        alert('Printing is not supported for this file type.');
+        return;
+      }
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }
+  };
+
+  const toggleFullScreen = () => {
+    const previewElement = document.querySelector('.file-preview-section');
+    if (!isFullScreen) {
+      if (previewElement.requestFullscreen) {
+        previewElement.requestFullscreen();
+      } else if (previewElement.webkitRequestFullscreen) {
+        previewElement.webkitRequestFullscreen();
+      } else if (previewElement.msRequestFullscreen) {
+        previewElement.msRequestFullscreen();
+      }
+      setIsFullScreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+      setIsFullScreen(false);
+    }
   };
 
   const renderContent = () => {
@@ -261,8 +393,8 @@ function StudentAssessment() {
 
   return (
     <div className="assessment-page">
-      <StuNavbar 
-        toggleSidebar={toggleSidebar} 
+      <StuNavbar
+        toggleSidebar={toggleSidebar}
         dropdownOpen={dropdownOpen}
         toggleDropdown={toggleDropdown}
       />
@@ -275,9 +407,13 @@ function StudentAssessment() {
               <FontAwesomeIcon icon={faStream} />
               <span>Stream</span>
             </Link>
+            <Link to={`/assignments/${classId}`} className="nav-item">
+                      <FontAwesomeIcon icon={faClipboardList} />
+                      <span>Assignments</span>
+                    </Link>
             <Link to={`/assessment/${classId}`} className="nav-item active">
               <FontAwesomeIcon icon={faClipboardList} />
-              <span>Notes</span>
+              <span>Learning AID</span>
             </Link>
             <Link to={`/people/${classId}`} className="nav-item">
               <FontAwesomeIcon icon={faUsers} />
@@ -285,7 +421,7 @@ function StudentAssessment() {
             </Link>
             <Link to={`/chat/${classId}`} className="nav-item">
               <FontAwesomeIcon icon={faComments} />
-              <span>Chat</span>
+              <span>Discussion Forum</span>
             </Link>
           </div>
           {showModal && currentUnit && (
@@ -315,9 +451,26 @@ function StudentAssessment() {
                       </ul>
                       {selectedFile && (
                         <div className="file-preview-section">
-                          <h4>File Preview: {selectedFile.title}</h4>
+                          <div className="file-preview-header">
+                            <h4>File Preview: {selectedFile.title}</h4>
+                            <div className="file-preview-actions">
+                              <button className="action-btn download" onClick={handleDownload} title="Download">
+                                <FontAwesomeIcon icon={faDownload} />
+                              </button>
+                              <button className="action-btn print" onClick={handlePrint} title="Print">
+                                <FontAwesomeIcon icon={faPrint} />
+                              </button>
+                              <button
+                                className="action-btn fullscreen"
+                                onClick={toggleFullScreen}
+                                title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
+                              >
+                                <FontAwesomeIcon icon={isFullScreen ? faCompress : faExpand} />
+                              </button>
+                            </div>
+                          </div>
                           {selectedFile.isNotes ? (
-                            <div className="file-content">{selectedFile.content}</div>
+                            <div className="file-content">{renderTextWithLinks(selectedFile.content)}</div>
                           ) : selectedFile.type?.startsWith('image/') ? (
                             <img
                               src={getFileUrl(selectedFile._id)}
@@ -349,7 +502,7 @@ function StudentAssessment() {
                           ) : selectedFile.type?.startsWith('text/') ||
                             selectedFile.type === 'application/json' ||
                             (selectedFile.name && selectedFile.name.match(/\.(txt|js|html|css|md)$/)) ? (
-                            <div className="file-content">{selectedFile.content}</div>
+                            <div className="file-content">{renderTextWithLinks(selectedFile.content)}</div>
                           ) : (
                             <div className="file-info">
                               <p>This file type cannot be previewed directly.</p>

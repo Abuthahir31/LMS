@@ -26,7 +26,7 @@ function extractNameFromEmail(email) {
 }
 
 const StudentloginDetails = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [filteredSessions, setFilteredSessions] = useState([]);
   const [students, setStudents] = useState({});
@@ -80,7 +80,7 @@ const StudentloginDetails = () => {
 
   const fetchClassDetails = async (classId, staffId) => {
     try {
-      const response = await axios.get(`https://lms-iap4.onrender.com/api/classes/${classId}/staff/${staffId}`);
+      const response = await axios.get(`https://uelms.onrender.com/api/classes/${classId}/staff/${staffId}`);
       setClassData(prev => ({
         ...prev,
         ...response.data.class,
@@ -96,7 +96,7 @@ const StudentloginDetails = () => {
   const fetchSessions = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`https://lms-iap4.onrender.com/api/activity/class/${classId}`);
+      const response = await axios.get(`https://uelms.onrender.com/api/activity/class/${classId}`);
       setSessions(response.data);
       setFilteredSessions(response.data);
     } catch (err) {
@@ -478,9 +478,13 @@ const StudentloginDetails = () => {
           <FontAwesomeIcon icon={faStream} />
           <span>Stream</span>
         </Link>
+        <Link to={`/staffassignments/${classId}`} className="nav-item">
+                  <FontAwesomeIcon icon={faClipboardList} />
+                  <span>Assignments</span>
+                </Link>
         <Link to={`/staffassessment/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faClipboardList} />
-          <span>Notes</span>
+          <span>Learning AID</span>
         </Link>
         <Link to={`/staffpeople/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faUsers} />
@@ -488,7 +492,7 @@ const StudentloginDetails = () => {
         </Link>
         <Link to={`/staffchat/${classId}`} className="nav-item">
           <FontAwesomeIcon icon={faComments} />
-          <span>Chat</span>
+          <span>Discussion Forum</span>
         </Link>
         <Link to={`/studentlogindetails/${classId}`} className="nav-item active">
           <FontAwesomeIcon icon={faClock} />

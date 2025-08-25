@@ -6,7 +6,7 @@ import "./home.css";
 import { auth } from "./firebase";
 
 function StudentHome() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [classes, setClasses] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
@@ -59,7 +59,7 @@ function StudentHome() {
       if (!email) {
         throw new Error('User email not found');
       }
-      const response = await fetch(`https://lms-iap4.onrender.com/api/classes/student/${uid}?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`https://uelms.onrender.com/api/classes/student/${uid}?email=${encodeURIComponent(email)}`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}, message: ${data.error || 'Unknown error'}`);
@@ -79,7 +79,7 @@ function StudentHome() {
     setLoadingAnnouncements(true);
     try {
       const classIds = studentClasses.map(cls => cls._id).join(',');
-      const response = await fetch(`https://lms-iap4.onrender.com/api/announcements?role=student&classIds=${encodeURIComponent(classIds)}`);
+      const response = await fetch(`https://uelms.onrender.com/api/announcements?role=student&classIds=${encodeURIComponent(classIds)}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
